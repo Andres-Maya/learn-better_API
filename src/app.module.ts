@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AreasModule } from './areas/areas.module';
+import { GradesModule } from './grades/grades.module';
+import { RecommendationsModule } from './recommendations/recommendations.module';
+import { StudentsModule } from './students/students.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -14,6 +18,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: 'YOUR_APP_SECRET',
       serviceId: 'learn-better_api',
     }),
+    StudentsModule,
+    AreasModule,
+    GradesModule,
+    RecommendationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,0 +1,61 @@
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { CreateAreaDto } from './dto/create-area.dto';
+import { UpdateAreaDto } from './dto/update-area.dto';
+import { Area } from './models/area.model';
+
+@Injectable()
+export class AreasService {
+  private readonly areas = new Map<string, Area>();
+
+  create(dto: CreateAreaDto): Area {
+    this.assertNameIsAvailable(dto.name);
+    const area: Area = {
+      id: randomUUID(),
+      ...dto,
+      createdAt: new Date(),
+    };
+    this.areas.set(area.id, area);
+    return area;
+  }
+
+  findAll(): Area[] {
+    return [...this.areas.values()];
+  }
+
+  findOne(id: string): Area {
+    const area = this.areas.get(id);
+    if (!area) {
+      throw new NotFoundException(`Area with id "${id}" not found`);
+    }
+    return area;
+  }
+
+  update(id: string, dto: UpdateAreaDto): Area {
+    const area = this.findOne(id);
+    if (dto.name !== undefined) {
+      this.assertNameIsAvailable(dto.name, id);
+    }
+    return Object.assign(area, dto);
+  }
+
+  remove(id: string): void {
+    this.findOne(id);
+    this.areas.delete(id);
+  }
+
+  private assertNameIsAvailable(name: string, ignoreId?: string): void {
+    const normalized = name.trim().toLowerCase();
+    const taken = this.findAll().some(
+      (area) =>
+        area.id !== ignoreId && area.name.trim().toLowerCase() === normalized,
+    );
+    if (taken) {
+      throw new ConflictException(`Area "${name}" already exists`);
+    }
+  }
+}

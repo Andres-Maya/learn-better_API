@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AreasService } from '../areas/areas.service';
-import { Area } from '../areas/models/area.model';
+import { Area } from '../areas/entities/area.entity';
 import {
   HIGH_SCORE,
   PASSING_SCORE,

@@ -13,7 +13,7 @@ import {
 import { AreasService } from './areas.service';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
-import { Area } from './models/area.model';
+import { Area } from './entities/area.entity';
 
 @Controller('areas')
 export class AreasController {

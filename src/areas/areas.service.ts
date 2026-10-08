@@ -12,8 +12,8 @@ import { Area } from './models/area.model';
 export class AreasService {
   private readonly areas = new Map<string, Area>();
 
-  create(dto: CreateAreaDto): Area {
-    this.assertNameIsAvailable(dto.name);
+  async create(dto: CreateAreaDto): Promise<Area> {
+    await this.assertNameIsAvailable(dto.name);
     const area: Area = {
       id: randomUUID(),
       ...dto,
@@ -23,11 +23,11 @@ export class AreasService {
     return area;
   }
 
-  findAll(): Area[] {
+  async findAll(): Promise<Area[]> {
     return [...this.areas.values()];
   }
 
-  findOne(id: string): Area {
+  async findOne(id: string): Promise<Area> {
     const area = this.areas.get(id);
     if (!area) {
       throw new NotFoundException(`Area with id "${id}" not found`);
@@ -35,22 +35,25 @@ export class AreasService {
     return area;
   }
 
-  update(id: string, dto: UpdateAreaDto): Area {
-    const area = this.findOne(id);
+  async update(id: string, dto: UpdateAreaDto): Promise<Area> {
+    const area = await this.findOne(id);
     if (dto.name !== undefined) {
-      this.assertNameIsAvailable(dto.name, id);
+      await this.assertNameIsAvailable(dto.name, id);
     }
     return Object.assign(area, dto);
   }
 
-  remove(id: string): void {
-    this.findOne(id);
+  async remove(id: string): Promise<void> {
+    await this.findOne(id);
     this.areas.delete(id);
   }
 
-  private assertNameIsAvailable(name: string, ignoreId?: string): void {
+  private async assertNameIsAvailable(
+    name: string,
+    ignoreId?: string,
+  ): Promise<void> {
     const normalized = name.trim().toLowerCase();
-    const taken = this.findAll().some(
+    const taken = (await this.findAll()).some(
       (area) =>
         area.id !== ignoreId && area.name.trim().toLowerCase() === normalized,
     );

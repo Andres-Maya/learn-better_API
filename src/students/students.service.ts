@@ -8,7 +8,7 @@ import { Student } from './models/student.model';
 export class StudentsService {
   private readonly students = new Map<string, Student>();
 
-  create(dto: CreateStudentDto): Student {
+  async create(dto: CreateStudentDto): Promise<Student> {
     const student: Student = {
       id: randomUUID(),
       ...dto,
@@ -18,11 +18,11 @@ export class StudentsService {
     return student;
   }
 
-  findAll(): Student[] {
+  async findAll(): Promise<Student[]> {
     return [...this.students.values()];
   }
 
-  findOne(id: string): Student {
+  async findOne(id: string): Promise<Student> {
     const student = this.students.get(id);
     if (!student) {
       throw new NotFoundException(`Student with id "${id}" not found`);
@@ -30,12 +30,12 @@ export class StudentsService {
     return student;
   }
 
-  update(id: string, dto: UpdateStudentDto): Student {
-    return Object.assign(this.findOne(id), dto);
+  async update(id: string, dto: UpdateStudentDto): Promise<Student> {
+    return Object.assign(await this.findOne(id), dto);
   }
 
-  remove(id: string): void {
-    this.findOne(id);
+  async remove(id: string): Promise<void> {
+    await this.findOne(id);
     this.students.delete(id);
   }
 }

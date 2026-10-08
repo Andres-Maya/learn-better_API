@@ -12,7 +12,7 @@ export class RecommendationsController {
   @Get('students/:studentId')
   analyzeStudent(
     @Param('studentId', ParseUUIDPipe) studentId: string,
-  ): StudentAnalysis {
+  ): Promise<StudentAnalysis> {
     return this.recommendationsService.analyzeStudent(studentId);
   }
 
@@ -20,7 +20,7 @@ export class RecommendationsController {
   analyzeStudentArea(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Param('areaId', ParseUUIDPipe) areaId: string,
-  ): AreaAnalysis {
+  ): Promise<AreaAnalysis> {
     return this.recommendationsService.analyzeStudentArea(studentId, areaId);
   }
 }

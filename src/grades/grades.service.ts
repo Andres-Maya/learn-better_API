@@ -16,9 +16,9 @@ export class GradesService {
     private readonly areasService: AreasService,
   ) {}
 
-  create(dto: CreateGradeDto): Grade {
-    this.studentsService.findOne(dto.studentId);
-    this.areasService.findOne(dto.areaId);
+  async create(dto: CreateGradeDto): Promise<Grade> {
+    await this.studentsService.findOne(dto.studentId);
+    await this.areasService.findOne(dto.areaId);
 
     const grade: Grade = {
       id: randomUUID(),
@@ -29,7 +29,7 @@ export class GradesService {
     return grade;
   }
 
-  findAll(filter: FilterGradesDto = {}): Grade[] {
+  async findAll(filter: FilterGradesDto = {}): Promise<Grade[]> {
     return [...this.grades.values()].filter(
       (grade) =>
         (filter.studentId === undefined ||
@@ -39,7 +39,7 @@ export class GradesService {
     );
   }
 
-  findOne(id: string): Grade {
+  async findOne(id: string): Promise<Grade> {
     const grade = this.grades.get(id);
     if (!grade) {
       throw new NotFoundException(`Grade with id "${id}" not found`);
@@ -47,12 +47,12 @@ export class GradesService {
     return grade;
   }
 
-  update(id: string, dto: UpdateGradeDto): Grade {
-    return Object.assign(this.findOne(id), dto);
+  async update(id: string, dto: UpdateGradeDto): Promise<Grade> {
+    return Object.assign(await this.findOne(id), dto);
   }
 
-  remove(id: string): void {
-    this.findOne(id);
+  async remove(id: string): Promise<void> {
+    await this.findOne(id);
     this.grades.delete(id);
   }
 }

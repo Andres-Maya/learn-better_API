@@ -25,9 +25,9 @@ export class RecommendationsService {
     private readonly gradesService: GradesService,
   ) {}
 
-  analyzeStudent(studentId: string): StudentAnalysis {
-    const student = this.studentsService.findOne(studentId);
-    const grades = this.gradesService.findAll({ studentId });
+  async analyzeStudent(studentId: string): Promise<StudentAnalysis> {
+    const student = await this.studentsService.findOne(studentId);
+    const grades = await this.gradesService.findAll({ studentId });
 
     const gradesByArea = new Map<string, Grade[]>();
     for (const grade of grades) {
@@ -36,8 +36,7 @@ export class RecommendationsService {
       gradesByArea.set(grade.areaId, areaGrades);
     }
 
-    const areas = this.areasService
-      .findAll()
+    const areas = (await this.areasService.findAll())
       .filter((area) => gradesByArea.has(area.id))
       .map((area) => this.buildAreaAnalysis(area, gradesByArea.get(area.id)!))
       .sort((a, b) => a.average - b.average);
@@ -75,10 +74,13 @@ export class RecommendationsService {
     };
   }
 
-  analyzeStudentArea(studentId: string, areaId: string): AreaAnalysis {
-    this.studentsService.findOne(studentId);
-    const area = this.areasService.findOne(areaId);
-    const grades = this.gradesService.findAll({ studentId, areaId });
+  async analyzeStudentArea(
+    studentId: string,
+    areaId: string,
+  ): Promise<AreaAnalysis> {
+    await this.studentsService.findOne(studentId);
+    const area = await this.areasService.findOne(areaId);
+    const grades = await this.gradesService.findAll({ studentId, areaId });
     if (grades.length === 0) {
       throw new NotFoundException(
         `Student "${studentId}" has no grades in area "${area.name}"`,

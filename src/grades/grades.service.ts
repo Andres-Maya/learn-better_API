@@ -1,17 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { AreasService } from '../areas/areas.service';
 import { StudentsService } from '../students/students.service';
 import { CreateGradeDto } from './dto/create-grade.dto';
 import { FilterGradesDto } from './dto/filter-grades.dto';
 import { UpdateGradeDto } from './dto/update-grade.dto';
-import { Grade } from './models/grade.model';
+import { Grade } from './entities/grade.entity';
 
 @Injectable()
 export class GradesService {
-  private readonly grades = new Map<string, Grade>();
-
   constructor(
+    @InjectRepository(Grade)
+    private readonly gradesRepository: Repository<Grade>,
     private readonly studentsService: StudentsService,
     private readonly areasService: AreasService,
   ) {}
@@ -20,27 +21,20 @@ export class GradesService {
     await this.studentsService.findOne(dto.studentId);
     await this.areasService.findOne(dto.areaId);
 
-    const grade: Grade = {
-      id: randomUUID(),
-      ...dto,
-      createdAt: new Date(),
-    };
-    this.grades.set(grade.id, grade);
-    return grade;
+    return this.gradesRepository.save(this.gradesRepository.create(dto));
   }
 
-  async findAll(filter: FilterGradesDto = {}): Promise<Grade[]> {
-    return [...this.grades.values()].filter(
-      (grade) =>
-        (filter.studentId === undefined ||
-          grade.studentId === filter.studentId) &&
-        (filter.areaId === undefined || grade.areaId === filter.areaId) &&
-        (filter.period === undefined || grade.period === filter.period),
-    );
+  findAll(filter: FilterGradesDto = {}): Promise<Grade[]> {
+    const where: FindOptionsWhere<Grade> = {};
+    if (filter.studentId !== undefined) where.studentId = filter.studentId;
+    if (filter.areaId !== undefined) where.areaId = filter.areaId;
+    if (filter.period !== undefined) where.period = filter.period;
+
+    return this.gradesRepository.find({ where, order: { createdAt: 'ASC' } });
   }
 
   async findOne(id: string): Promise<Grade> {
-    const grade = this.grades.get(id);
+    const grade = await this.gradesRepository.findOneBy({ id });
     if (!grade) {
       throw new NotFoundException(`Grade with id "${id}" not found`);
     }
@@ -48,11 +42,12 @@ export class GradesService {
   }
 
   async update(id: string, dto: UpdateGradeDto): Promise<Grade> {
-    return Object.assign(await this.findOne(id), dto);
+    const grade = await this.findOne(id);
+    return this.gradesRepository.save(Object.assign(grade, dto));
   }
 
   async remove(id: string): Promise<void> {
-    await this.findOne(id);
-    this.grades.delete(id);
+    const grade = await this.findOne(id);
+    await this.gradesRepository.remove(grade);
   }
 }

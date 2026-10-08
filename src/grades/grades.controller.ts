@@ -15,7 +15,7 @@ import { CreateGradeDto } from './dto/create-grade.dto';
 import { FilterGradesDto } from './dto/filter-grades.dto';
 import { UpdateGradeDto } from './dto/update-grade.dto';
 import { GradesService } from './grades.service';
-import { Grade } from './models/grade.model';
+import { Grade } from './entities/grade.entity';
 
 @Controller('grades')
 export class GradesController {

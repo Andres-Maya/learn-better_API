@@ -7,7 +7,7 @@ import {
   SUPERIOR_SCORE,
 } from '../grades/grade-scale';
 import { GradesService } from '../grades/grades.service';
-import { Grade } from '../grades/models/grade.model';
+import { Grade } from '../grades/entities/grade.entity';
 import { StudentsService } from '../students/students.service';
 import { AreaAnalysis } from './models/area-analysis.model';
 import { PerformanceLevel } from './models/performance-level.enum';

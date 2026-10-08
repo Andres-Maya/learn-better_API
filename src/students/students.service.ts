@@ -1,41 +1,79 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { isUniqueViolation } from '../common/is-unique-violation';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { Student } from './models/student.model';
+import { Student } from './entities/student.entity';
 
 @Injectable()
 export class StudentsService {
-  private readonly students = new Map<string, Student>();
+  constructor(
+    @InjectRepository(Student)
+    private readonly studentsRepository: Repository<Student>,
+  ) {}
 
-  create(dto: CreateStudentDto): Student {
-    const student: Student = {
-      id: randomUUID(),
-      ...dto,
-      createdAt: new Date(),
-    };
-    this.students.set(student.id, student);
-    return student;
+  async create(dto: CreateStudentDto): Promise<Student> {
+    if (dto.email !== undefined) {
+      await this.assertEmailIsAvailable(dto.email);
+    }
+    return this.save(this.studentsRepository.create(dto));
   }
 
-  findAll(): Student[] {
-    return [...this.students.values()];
+  findAll(): Promise<Student[]> {
+    return this.studentsRepository.find({ order: { createdAt: 'ASC' } });
   }
 
-  findOne(id: string): Student {
-    const student = this.students.get(id);
+  async findOne(id: string): Promise<Student> {
+    const student = await this.studentsRepository.findOneBy({ id });
     if (!student) {
       throw new NotFoundException(`Student with id "${id}" not found`);
     }
     return student;
   }
 
-  update(id: string, dto: UpdateStudentDto): Student {
-    return Object.assign(this.findOne(id), dto);
+  async update(id: string, dto: UpdateStudentDto): Promise<Student> {
+    const student = await this.findOne(id);
+    if (dto.email !== undefined) {
+      await this.assertEmailIsAvailable(dto.email, id);
+    }
+    return this.save(Object.assign(student, dto));
   }
 
-  remove(id: string): void {
-    this.findOne(id);
-    this.students.delete(id);
+  async remove(id: string): Promise<void> {
+    const student = await this.findOne(id);
+    await this.studentsRepository.remove(student);
+  }
+
+  private async assertEmailIsAvailable(
+    email: string,
+    ignoreId?: string,
+  ): Promise<void> {
+    const existing = await this.studentsRepository.findOneBy({ email });
+    if (existing && existing.id !== ignoreId) {
+      throw this.emailTaken(email);
+    }
+  }
+
+  // The unique constraint still catches two requests racing past the check above.
+  private async save(student: Student): Promise<Student> {
+    try {
+      return await this.studentsRepository.save(student);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw this.emailTaken(student.email ?? '');
+      }
+      throw error;
+    }
+  }
+
+  private emailTaken(email: string): ConflictException {
+    return new ConflictException(
+      `Ya existe un estudiante con el correo "${email}"`,
+    );
   }
 }

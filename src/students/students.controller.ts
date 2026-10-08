@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { Student } from './models/student.model';
+import { Student } from './entities/student.entity';
 import { StudentsService } from './students.service';
 
 @Controller('students')
@@ -20,17 +20,17 @@ export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Post()
-  create(@Body() dto: CreateStudentDto): Student {
+  create(@Body() dto: CreateStudentDto): Promise<Student> {
     return this.studentsService.create(dto);
   }
 
   @Get()
-  findAll(): Student[] {
+  findAll(): Promise<Student[]> {
     return this.studentsService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Student {
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Student> {
     return this.studentsService.findOne(id);
   }
 
@@ -38,13 +38,13 @@ export class StudentsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateStudentDto,
-  ): Student {
+  ): Promise<Student> {
     return this.studentsService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string): void {
-    this.studentsService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    await this.studentsService.remove(id);
   }
 }

@@ -15,24 +15,24 @@ import { CreateGradeDto } from './dto/create-grade.dto';
 import { FilterGradesDto } from './dto/filter-grades.dto';
 import { UpdateGradeDto } from './dto/update-grade.dto';
 import { GradesService } from './grades.service';
-import { Grade } from './models/grade.model';
+import { Grade } from './entities/grade.entity';
 
 @Controller('grades')
 export class GradesController {
   constructor(private readonly gradesService: GradesService) {}
 
   @Post()
-  create(@Body() dto: CreateGradeDto): Grade {
+  create(@Body() dto: CreateGradeDto): Promise<Grade> {
     return this.gradesService.create(dto);
   }
 
   @Get()
-  findAll(@Query() filter: FilterGradesDto): Grade[] {
+  findAll(@Query() filter: FilterGradesDto): Promise<Grade[]> {
     return this.gradesService.findAll(filter);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Grade {
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Grade> {
     return this.gradesService.findOne(id);
   }
 
@@ -40,13 +40,13 @@ export class GradesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateGradeDto,
-  ): Grade {
+  ): Promise<Grade> {
     return this.gradesService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string): void {
-    this.gradesService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    await this.gradesService.remove(id);
   }
 }

@@ -13,24 +13,24 @@ import {
 import { AreasService } from './areas.service';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
-import { Area } from './models/area.model';
+import { Area } from './entities/area.entity';
 
 @Controller('areas')
 export class AreasController {
   constructor(private readonly areasService: AreasService) {}
 
   @Post()
-  create(@Body() dto: CreateAreaDto): Area {
+  create(@Body() dto: CreateAreaDto): Promise<Area> {
     return this.areasService.create(dto);
   }
 
   @Get()
-  findAll(): Area[] {
+  findAll(): Promise<Area[]> {
     return this.areasService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Area {
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Area> {
     return this.areasService.findOne(id);
   }
 
@@ -38,13 +38,13 @@ export class AreasController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAreaDto,
-  ): Area {
+  ): Promise<Area> {
     return this.areasService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string): void {
-    this.areasService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    await this.areasService.remove(id);
   }
 }

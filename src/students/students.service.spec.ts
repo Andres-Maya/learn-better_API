@@ -1,5 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { Student } from './entities/student.entity';
 import { StudentsService } from './students.service';
 
@@ -9,6 +9,7 @@ describe('StudentsService', () => {
     create: jest.Mock;
     save: jest.Mock;
     findOneBy: jest.Mock;
+    findAndCount: jest.Mock;
   };
 
   beforeEach(() => {
@@ -18,6 +19,7 @@ describe('StudentsService', () => {
         Promise.resolve({ id: 'student-1', ...student }),
       ),
       findOneBy: jest.fn().mockResolvedValue(null),
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
     };
     service = new StudentsService(repository as unknown as Repository<Student>);
   });
@@ -62,5 +64,37 @@ describe('StudentsService', () => {
     await expect(service.findOne('missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  describe('findPage', () => {
+    it('busca en nombre, apellido o correo dentro del grado', async () => {
+      await service.findPage({
+        page: 2,
+        limit: 10,
+        search: 'gómez',
+        gradeLevel: '9A',
+      });
+
+      expect(repository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: [
+            { gradeLevel: '9A', firstName: ILike('%gómez%') },
+            { gradeLevel: '9A', lastName: ILike('%gómez%') },
+            { gradeLevel: '9A', email: ILike('%gómez%') },
+          ],
+          skip: 10,
+          take: 10,
+        }),
+      );
+    });
+
+    it('devuelve la página con el total', async () => {
+      repository.findAndCount.mockResolvedValue([[{ id: 'student-1' }], 41]);
+
+      const page = await service.findPage({ page: 1, limit: 20 });
+
+      expect(page).toMatchObject({ total: 41, totalPages: 3, page: 1 });
+      expect(page.data).toHaveLength(1);
+    });
   });
 });

@@ -116,8 +116,8 @@ describe('Notas y recomendaciones (e2e)', () => {
         .auth(teacherToken, { type: 'bearer' })
         .expect(200);
 
-      expect(response.body).toHaveLength(1);
-      expect(response.body[0]).toMatchObject({ score: 2.6, period: 2 });
+      expect(response.body.total).toBe(1);
+      expect(response.body.data[0]).toMatchObject({ score: 2.6, period: 2 });
     });
 
     it('el docente edita una nota', async () => {
@@ -146,9 +146,9 @@ describe('Notas y recomendaciones (e2e)', () => {
         .auth(lauraToken, { type: 'bearer' })
         .expect(200);
 
-      expect(response.body).toHaveLength(4);
+      expect(response.body.total).toBe(4);
       expect(
-        response.body.every(
+        response.body.data.every(
           (grade: { studentId: string }) => grade.studentId === lauraId,
         ),
       ).toBe(true);
@@ -233,7 +233,7 @@ describe('Notas y recomendaciones (e2e)', () => {
       .auth(teacherToken, { type: 'bearer' })
       .expect(200);
     expect(
-      response.body.some(
+      response.body.data.some(
         (grade: { areaId: string }) => grade.areaId === englishId,
       ),
     ).toBe(false);

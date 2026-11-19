@@ -24,6 +24,7 @@ const config: Config = {
     'apps/**/*.(t|j)s',
     // Wiring and generated code: covered by the e2e tests, not by unit tests.
     '!src/main.ts',
+    '!src/app.setup.ts',
     '!src/swagger.ts',
     '!src/**/*.module.ts',
     '!src/database/**',

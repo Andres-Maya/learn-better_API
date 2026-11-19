@@ -47,6 +47,10 @@ export class UsersService {
     return toPublicUser(user);
   }
 
+  findById(id: string): Promise<User | null> {
+    return this.usersRepository.findOneBy({ id });
+  }
+
   // Returns the password hash too, so it is only meant for the login flow.
   findByEmailWithPassword(email: string): Promise<User | null> {
     return this.usersRepository.findOneBy({ email: normalizeEmail(email) });

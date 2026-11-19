@@ -10,15 +10,19 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../users/role.enum';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { Student } from './entities/student.entity';
 import { StudentsService } from './students.service';
 
+@Roles(Role.ADMIN, Role.TEACHER)
 @Controller('students')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
+  @Roles(Role.ADMIN)
   @Post()
   create(@Body() dto: CreateStudentDto): Promise<Student> {
     return this.studentsService.create(dto);
@@ -34,6 +38,7 @@ export class StudentsController {
     return this.studentsService.findOne(id);
   }
 
+  @Roles(Role.ADMIN)
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -42,6 +47,7 @@ export class StudentsController {
     return this.studentsService.update(id, dto);
   }
 
+  @Roles(Role.ADMIN)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {

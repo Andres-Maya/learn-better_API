@@ -11,6 +11,8 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../users/role.enum';
 import { CreateGradeDto } from './dto/create-grade.dto';
 import { FilterGradesDto } from './dto/filter-grades.dto';
 import { UpdateGradeDto } from './dto/update-grade.dto';
@@ -21,6 +23,7 @@ import { Grade } from './entities/grade.entity';
 export class GradesController {
   constructor(private readonly gradesService: GradesService) {}
 
+  @Roles(Role.ADMIN, Role.TEACHER)
   @Post()
   create(@Body() dto: CreateGradeDto): Promise<Grade> {
     return this.gradesService.create(dto);
@@ -36,6 +39,7 @@ export class GradesController {
     return this.gradesService.findOne(id);
   }
 
+  @Roles(Role.ADMIN, Role.TEACHER)
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -44,6 +48,7 @@ export class GradesController {
     return this.gradesService.update(id, dto);
   }
 
+  @Roles(Role.ADMIN, Role.TEACHER)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {

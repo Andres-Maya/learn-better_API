@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { Page, pageOptions, toPage } from '../common/dto/paginated.dto';
 import { isUniqueViolation } from '../common/is-unique-violation';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
@@ -24,6 +26,16 @@ export class AreasService {
 
   findAll(): Promise<Area[]> {
     return this.areasRepository.find({ order: { createdAt: 'ASC' } });
+  }
+
+  async findPage(query: PaginationQueryDto): Promise<Page<Area>> {
+    return toPage(
+      await this.areasRepository.findAndCount({
+        order: { name: 'ASC' },
+        ...pageOptions(query),
+      }),
+      query,
+    );
   }
 
   async findOne(id: string): Promise<Area> {

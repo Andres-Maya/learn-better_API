@@ -238,4 +238,35 @@ describe('Notas y recomendaciones (e2e)', () => {
       ),
     ).toBe(false);
   });
+
+  describe('reporte por grado', () => {
+    it('el docente consulta el reporte del grado', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/recommendations/grade-levels/9A')
+        .auth(teacherToken, { type: 'bearer' })
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        gradeLevel: '9A',
+        studentsCount: 2,
+        studentsWithGrades: 2,
+      });
+      expect(response.body.studentsAtRisk).toEqual([]);
+      expect(response.body.areas[0].areaName).toBe('Matemáticas');
+    });
+
+    it('un estudiante no puede ver el reporte', () => {
+      return request(app.getHttpServer())
+        .get('/recommendations/grade-levels/9A')
+        .auth(lauraToken, { type: 'bearer' })
+        .expect(403);
+    });
+
+    it('responde 404 si el grado no tiene estudiantes', () => {
+      return request(app.getHttpServer())
+        .get('/recommendations/grade-levels/7Z')
+        .auth(teacherToken, { type: 'bearer' })
+        .expect(404);
+    });
+  });
 });

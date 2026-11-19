@@ -32,7 +32,7 @@ Para terminar el proyecto hace falta el **paso 12**. Las tareas extra lo mejoran
 
 ### 2.1 Requisitos
 
-- Node.js 20 o superior y npm
+- Node.js 22 o superior y npm
 - Docker Desktop
 - Git
 - Una cuenta de GitHub con acceso al repositorio `Andres-Maya/learn-better_API`. Pídele al dueño que te agregue como colaborador en **Settings → Collaborators**.

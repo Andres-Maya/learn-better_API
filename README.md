@@ -53,7 +53,7 @@ Construida con **NestJS**, **TypeScript**, **PostgreSQL** y autenticación con *
 
 ## Requisitos
 
-- Node.js 20 o superior
+- Node.js 22 o superior
 - npm
 - Docker Desktop
 - Git

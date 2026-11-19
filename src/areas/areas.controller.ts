@@ -9,12 +9,15 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { Role } from '../users/role.enum';
 import { AreasService } from './areas.service';
 import { CreateAreaDto } from './dto/create-area.dto';
+import { PaginatedAreasDto } from './dto/paginated-areas.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
 import { Area } from './entities/area.entity';
 
@@ -32,10 +35,10 @@ export class AreasController {
     return this.areasService.create(dto);
   }
 
-  /** Lista las materias. */
+  /** Lista las materias por páginas, en orden alfabético. */
   @Get()
-  findAll(): Promise<Area[]> {
-    return this.areasService.findAll();
+  findAll(@Query() query: PaginationQueryDto): Promise<PaginatedAreasDto> {
+    return this.areasService.findPage(query);
   }
 
   /** Muestra una materia. */

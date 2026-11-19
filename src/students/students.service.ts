@@ -4,9 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, Repository } from 'typeorm';
+import { Page, pageOptions, toPage } from '../common/dto/paginated.dto';
+import { containsPattern } from '../common/like-pattern';
 import { isUniqueViolation } from '../common/is-unique-violation';
 import { CreateStudentDto } from './dto/create-student.dto';
+import { FilterStudentsDto } from './dto/filter-students.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { Student } from './entities/student.entity';
 
@@ -26,6 +29,36 @@ export class StudentsService {
 
   findAll(): Promise<Student[]> {
     return this.studentsRepository.find({ order: { createdAt: 'ASC' } });
+  }
+
+  findByGradeLevel(gradeLevel: string): Promise<Student[]> {
+    return this.studentsRepository.find({
+      where: { gradeLevel },
+      order: { lastName: 'ASC', firstName: 'ASC' },
+    });
+  }
+
+  async findPage(filter: FilterStudentsDto): Promise<Page<Student>> {
+    const base: FindOptionsWhere<Student> = {};
+    if (filter.gradeLevel !== undefined) base.gradeLevel = filter.gradeLevel;
+
+    // A list of conditions is an OR: the text can match any of the three columns.
+    const where =
+      filter.search === undefined
+        ? base
+        : (['firstName', 'lastName', 'email'] as const).map((column) => ({
+            ...base,
+            [column]: ILike(containsPattern(filter.search!)),
+          }));
+
+    return toPage(
+      await this.studentsRepository.findAndCount({
+        where,
+        order: { lastName: 'ASC', firstName: 'ASC' },
+        ...pageOptions(filter),
+      }),
+      filter,
+    );
   }
 
   async findOne(id: string): Promise<Student> {

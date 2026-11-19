@@ -9,11 +9,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../users/role.enum';
 import { CreateStudentDto } from './dto/create-student.dto';
+import { FilterStudentsDto } from './dto/filter-students.dto';
+import { PaginatedStudentsDto } from './dto/paginated-students.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { Student } from './entities/student.entity';
 import { StudentsService } from './students.service';
@@ -32,10 +35,10 @@ export class StudentsController {
     return this.studentsService.create(dto);
   }
 
-  /** Lista los estudiantes. */
+  /** Lista los estudiantes por páginas, con búsqueda y filtro por grado. */
   @Get()
-  findAll(): Promise<Student[]> {
-    return this.studentsService.findAll();
+  findAll(@Query() filter: FilterStudentsDto): Promise<PaginatedStudentsDto> {
+    return this.studentsService.findPage(filter);
   }
 
   /** Muestra un estudiante. */

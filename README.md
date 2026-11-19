@@ -22,6 +22,8 @@ Construida con **NestJS**, **TypeScript**, **PostgreSQL** y autenticación con *
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Scripts disponibles](#scripts-disponibles)
 - [Pruebas](#pruebas)
+- [Integración continua](#integración-continua)
+- [Despliegue](#despliegue)
 - [Flujo de trabajo con Git](#flujo-de-trabajo-con-git)
 - [Estado del proyecto](#estado-del-proyecto)
 
@@ -87,6 +89,14 @@ npm run seed
 npm run start:dev
 ```
 
+También puedes correr la API completa en Docker, con la misma imagen de producción:
+
+```bash
+docker compose --profile app up -d --build
+```
+
+El contenedor aplica las migraciones pendientes antes de arrancar. `docker compose up -d`, sin el perfil, solo levanta PostgreSQL.
+
 - API: `http://localhost:3000`
 - Documentación Swagger: `http://localhost:3000/docs`
 - Estado de la API: `http://localhost:3000/health`
@@ -119,6 +129,7 @@ npm run start:dev
 | `JWT_EXPIRES_IN` | Duración del token | `1d` |
 | `ADMIN_EMAIL` | Correo del administrador inicial | `admin@colegio.edu.co` |
 | `ADMIN_PASSWORD` | Contraseña del administrador inicial (mínimo 8) | `CambiaEsto123` |
+| `CORS_ORIGIN` | Opcional. Dominios del frontend que pueden llamar la API, separados por comas | `https://mi-frontend.com` |
 | `OBSERVE_APP_KEY` | Opcional. Telemetría de observe.nestjs.com; sin ella el módulo no se carga | |
 | `OBSERVE_APP_SECRET` | Opcional. Va junto con `OBSERVE_APP_KEY` | |
 | `DB_TEST_NAME` | Opcional. Base de datos de las pruebas e2e | `learn_better_test` |
@@ -210,7 +221,9 @@ Además, la API envía cabeceras de seguridad con Helmet.
 | Crear, editar o borrar notas | ✅ | ✅ | ❌ |
 | Ver notas | ✅ | ✅ | Solo las suyas |
 | Ver recomendaciones | ✅ | ✅ | Solo las suyas |
-| Crear usuarios | ✅ | ❌ | ❌ |
+| Ver reporte por grado | ✅ | ✅ | ❌ |
+| Crear, editar y borrar usuarios | ✅ | ❌ | ❌ |
+| Cambiar su propia contraseña | ✅ | ✅ | ✅ |
 
 Rutas públicas, sin token: `POST /auth/login`, `GET /`, `GET /health` y `GET /docs`.
 
@@ -225,12 +238,24 @@ Rutas públicas, sin token: `POST /auth/login`, `GET /`, `GET /health` y `GET /d
 | `POST` | `/auth/login` | Inicia sesión y devuelve el token | Público |
 | `GET` | `/auth/me` | Datos del usuario actual | Todos |
 | `POST` | `/auth/register` | Crea un usuario | ADMIN |
+| `PATCH` | `/auth/password` | Cambia la contraseña propia (`currentPassword`, `newPassword`) | Todos |
+
+### Usuarios
+
+| Método | Ruta | Descripción | Roles |
+|---|---|---|---|
+| `GET` | `/users` | Lista los usuarios | ADMIN |
+| `GET` | `/users/:id` | Muestra un usuario | ADMIN |
+| `PATCH` | `/users/:id` | Edita correo, contraseña, rol o estudiante enlazado | ADMIN |
+| `DELETE` | `/users/:id` | Borra un usuario | ADMIN |
+
+No se puede borrar el propio usuario, ni quitar o borrar al único ADMIN.
 
 ### Estudiantes
 
 | Método | Ruta | Descripción | Roles |
 |---|---|---|---|
-| `GET` | `/students` | Lista los estudiantes | ADMIN, TEACHER |
+| `GET` | `/students?page=&limit=&search=&gradeLevel=` | Lista paginada, con búsqueda por nombre, apellido o correo | ADMIN, TEACHER |
 | `GET` | `/students/:id` | Muestra un estudiante | ADMIN, TEACHER |
 | `POST` | `/students` | Crea un estudiante | ADMIN |
 | `PATCH` | `/students/:id` | Edita un estudiante | ADMIN |
@@ -240,7 +265,7 @@ Rutas públicas, sin token: `POST /auth/login`, `GET /`, `GET /health` y `GET /d
 
 | Método | Ruta | Descripción | Roles |
 |---|---|---|---|
-| `GET` | `/areas` | Lista las materias | ADMIN, TEACHER |
+| `GET` | `/areas?page=&limit=` | Lista paginada de materias | ADMIN, TEACHER |
 | `GET` | `/areas/:id` | Muestra una materia | ADMIN, TEACHER |
 | `POST` | `/areas` | Crea una materia | ADMIN |
 | `PATCH` | `/areas/:id` | Edita una materia | ADMIN |
@@ -250,7 +275,7 @@ Rutas públicas, sin token: `POST /auth/login`, `GET /`, `GET /health` y `GET /d
 
 | Método | Ruta | Descripción | Roles |
 |---|---|---|---|
-| `GET` | `/grades?studentId=&areaId=&period=` | Lista notas con filtros opcionales | Todos* |
+| `GET` | `/grades?studentId=&areaId=&period=&page=&limit=` | Lista paginada con filtros opcionales | Todos* |
 | `GET` | `/grades/:id` | Muestra una nota | Todos* |
 | `POST` | `/grades` | Registra una nota | ADMIN, TEACHER |
 | `PATCH` | `/grades/:id` | Edita una nota | ADMIN, TEACHER |
@@ -262,8 +287,23 @@ Rutas públicas, sin token: `POST /auth/login`, `GET /`, `GET /health` y `GET /d
 |---|---|---|---|
 | `GET` | `/recommendations/students/:studentId` | Análisis general del estudiante | Todos* |
 | `GET` | `/recommendations/students/:studentId/areas/:areaId` | Análisis en una materia | Todos* |
+| `GET` | `/recommendations/grade-levels/:gradeLevel` | Reporte del grado: promedio por materia, estudiantes por nivel y estudiantes en riesgo (promedio menor a 3.0) | ADMIN, TEACHER |
 
 \* Un usuario `STUDENT` solo puede ver sus propias notas y recomendaciones.
+
+### Paginación
+
+Los listados de estudiantes, materias y notas reciben `page` (desde 1) y `limit` (de 1 a 100, por defecto 20), y responden así:
+
+```json
+{
+  "data": [ ... ],
+  "total": 41,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 3
+}
+```
 
 ### Salud
 
@@ -415,6 +455,8 @@ src/
 └── main.ts            Arranque de la app
 test/                  Pruebas e2e y su configuración
 docs/                  Guías del proyecto
+.github/workflows/     Integración continua
+Dockerfile             Imagen de producción en dos etapas
 ```
 
 Cada módulo sigue el mismo patrón:
@@ -465,6 +507,25 @@ npm run test:e2e   # pruebas e2e (necesita PostgreSQL arriba)
 
 ---
 
+## Integración continua
+
+En cada push a `main` y en cada Pull Request, GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) corre el linter, las pruebas unitarias, el build y las pruebas e2e contra un PostgreSQL temporal, y además comprueba que la imagen de Docker compile.
+
+---
+
+## Despliegue
+
+La API se despliega con el `Dockerfile` en cualquier proveedor que soporte contenedores y PostgreSQL, por ejemplo Render, Railway o Fly.io:
+
+1. Crea una base de datos PostgreSQL administrada.
+2. Crea un servicio web a partir del repositorio, usando el `Dockerfile`.
+3. Configura las variables de entorno. Usa un `JWT_SECRET` nuevo, un `ADMIN_PASSWORD` fuerte, los datos de la base de datos y `CORS_ORIGIN` si hay un frontend.
+4. Usa `/health` como ruta de health check.
+
+Las migraciones se aplican solas cada vez que arranca el contenedor. No ejecutes `npm run seed` en producción.
+
+---
+
 ## Flujo de trabajo con Git
 
 - No se trabaja directamente en `main`.
@@ -497,17 +558,17 @@ Ejemplo: `feat: entidad Student con typeorm`
 - Filtro global de errores, Helmet, límite de peticiones y health check
 - Datos de ejemplo (seed)
 - Pruebas e2e
+- Dockerfile de producción y servicio en Docker Compose
+- Integración continua con GitHub Actions
+- Gestión de usuarios y cambio de contraseña
+- Paginación y búsqueda
+- Reporte por grado
+- CORS configurable
 
 ### 🚧 Próximos pasos
 
-El detalle de cada tarea está en [docs/GUIA-SEGUNDA-ETAPA.md](docs/GUIA-SEGUNDA-ETAPA.md).
-
-- [ ] Dockerfile de producción y despliegue
-- [ ] Integración continua (lint + pruebas en cada Pull Request)
-- [ ] Editar y borrar usuarios
-- [ ] Cambio de contraseña y refresh token
-- [ ] Paginación y búsqueda
-- [ ] Reporte por grado
+- [ ] Publicar la API en un proveedor (pasos en [Despliegue](#despliegue))
+- [ ] Refresh token
 
 ---
 

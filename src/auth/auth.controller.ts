@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -16,6 +17,7 @@ import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { Roles } from './decorators/roles.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 import type { AuthenticatedUser } from './jwt-payload';
@@ -51,5 +53,20 @@ export class AuthController {
   @Post('register')
   register(@Body() dto: CreateUserDto): Promise<PublicUserDto> {
     return this.usersService.create(dto);
+  }
+
+  /** Cambia la contraseña del usuario que hizo la petición. */
+  @ApiBearerAuth()
+  @Patch('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<void> {
+    await this.usersService.changePassword(
+      user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 }

@@ -116,8 +116,8 @@ describe('Notas y recomendaciones (e2e)', () => {
         .auth(teacherToken, { type: 'bearer' })
         .expect(200);
 
-      expect(response.body).toHaveLength(1);
-      expect(response.body[0]).toMatchObject({ score: 2.6, period: 2 });
+      expect(response.body.total).toBe(1);
+      expect(response.body.data[0]).toMatchObject({ score: 2.6, period: 2 });
     });
 
     it('el docente edita una nota', async () => {
@@ -146,9 +146,9 @@ describe('Notas y recomendaciones (e2e)', () => {
         .auth(lauraToken, { type: 'bearer' })
         .expect(200);
 
-      expect(response.body).toHaveLength(4);
+      expect(response.body.total).toBe(4);
       expect(
-        response.body.every(
+        response.body.data.every(
           (grade: { studentId: string }) => grade.studentId === lauraId,
         ),
       ).toBe(true);
@@ -233,9 +233,40 @@ describe('Notas y recomendaciones (e2e)', () => {
       .auth(teacherToken, { type: 'bearer' })
       .expect(200);
     expect(
-      response.body.some(
+      response.body.data.some(
         (grade: { areaId: string }) => grade.areaId === englishId,
       ),
     ).toBe(false);
+  });
+
+  describe('reporte por grado', () => {
+    it('el docente consulta el reporte del grado', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/recommendations/grade-levels/9A')
+        .auth(teacherToken, { type: 'bearer' })
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        gradeLevel: '9A',
+        studentsCount: 2,
+        studentsWithGrades: 2,
+      });
+      expect(response.body.studentsAtRisk).toEqual([]);
+      expect(response.body.areas[0].areaName).toBe('Matemáticas');
+    });
+
+    it('un estudiante no puede ver el reporte', () => {
+      return request(app.getHttpServer())
+        .get('/recommendations/grade-levels/9A')
+        .auth(lauraToken, { type: 'bearer' })
+        .expect(403);
+    });
+
+    it('responde 404 si el grado no tiene estudiantes', () => {
+      return request(app.getHttpServer())
+        .get('/recommendations/grade-levels/7Z')
+        .auth(teacherToken, { type: 'bearer' })
+        .expect(404);
+    });
   });
 });

@@ -78,7 +78,8 @@ describe('Estudiantes y materias (e2e)', () => {
         .auth(teacherToken, { type: 'bearer' })
         .expect(200);
 
-      expect(response.body).toHaveLength(1);
+      expect(response.body).toMatchObject({ total: 1, page: 1 });
+      expect(response.body.data).toHaveLength(1);
     });
 
     it('el docente no puede crear, editar ni borrar estudiantes', async () => {
@@ -123,6 +124,65 @@ describe('Estudiantes y materias (e2e)', () => {
         .delete(`/students/${studentId}`)
         .auth(adminToken, { type: 'bearer' })
         .expect(204);
+    });
+  });
+
+  describe('paginación y búsqueda de estudiantes', () => {
+    beforeAll(async () => {
+      for (const [firstName, lastName, gradeLevel] of [
+        ['Ana', 'Pérez', '10A'],
+        ['Carlos', 'Gómez', '10A'],
+        ['Diana', 'Gómez', '11B'],
+      ]) {
+        await request(app.getHttpServer())
+          .post('/students')
+          .auth(adminToken, { type: 'bearer' })
+          .send({ firstName, lastName, gradeLevel })
+          .expect(201);
+      }
+    });
+
+    it('devuelve la página pedida con el total', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/students')
+        .query({ page: 2, limit: 2 })
+        .auth(teacherToken, { type: 'bearer' })
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        total: 3,
+        page: 2,
+        limit: 2,
+        totalPages: 2,
+      });
+      expect(response.body.data).toHaveLength(1);
+    });
+
+    it('busca sin importar mayúsculas y filtra por grado', async () => {
+      const server = app.getHttpServer();
+      const search = await request(server)
+        .get('/students')
+        .query({ search: 'GÓMEZ' })
+        .auth(teacherToken, { type: 'bearer' })
+        .expect(200);
+      expect(search.body.total).toBe(2);
+
+      const filtered = await request(server)
+        .get('/students')
+        .query({ search: 'gómez', gradeLevel: '11B' })
+        .auth(teacherToken, { type: 'bearer' })
+        .expect(200);
+      expect(
+        filtered.body.data.map((s: { firstName: string }) => s.firstName),
+      ).toEqual(['Diana']);
+    });
+
+    it('rechaza más de 100 registros por página', () => {
+      return request(app.getHttpServer())
+        .get('/students')
+        .query({ limit: 101 })
+        .auth(teacherToken, { type: 'bearer' })
+        .expect(400);
     });
   });
 

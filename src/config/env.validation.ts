@@ -55,6 +55,11 @@ export class EnvironmentVariables {
   @MinLength(8)
   ADMIN_PASSWORD: string;
 
+  // Comma separated list of origins allowed to call the API from a browser.
+  @IsOptional()
+  @IsString()
+  CORS_ORIGIN?: string;
+
   @IsOptional()
   @IsString()
   OBSERVE_APP_KEY?: string;

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: learn_better
+          POSTGRES_PASSWORD: learn_better
+          POSTGRES_DB: learn_better
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U learn_better"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # There is no .env in CI: the e2e setup reads these from the environment.
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: learn_better
+      DB_PASSWORD: learn_better
+      DB_NAME: learn_better
+      JWT_SECRET: ci-secret-that-is-at-least-32-characters-long
+      ADMIN_EMAIL: admin@colegio.edu.co
+      ADMIN_PASSWORD: CambiaEsto123
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npm run test:e2e
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: La imagen de producción compila
+        run: docker build -t learn-better-api:ci .

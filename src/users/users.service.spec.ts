@@ -3,7 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { compare } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { StudentsService } from '../students/students.service';
 import { User } from './entities/user.entity';
@@ -19,6 +19,9 @@ describe('UsersService', () => {
     save: jest.Mock;
     existsBy: jest.Mock;
     findOneBy: jest.Mock;
+    find: jest.Mock;
+    countBy: jest.Mock;
+    remove: jest.Mock;
   };
   let studentsService: { findOne: jest.Mock };
 
@@ -35,6 +38,9 @@ describe('UsersService', () => {
       ),
       existsBy: jest.fn().mockResolvedValue(false),
       findOneBy: jest.fn().mockResolvedValue(null),
+      find: jest.fn().mockResolvedValue([]),
+      countBy: jest.fn().mockResolvedValue(1),
+      remove: jest.fn().mockResolvedValue(undefined),
     };
     studentsService = { findOne: jest.fn().mockResolvedValue({}) };
 
@@ -106,8 +112,10 @@ describe('UsersService', () => {
     });
 
     it('lanza 409 si el estudiante ya tiene un usuario', async () => {
-      repository.existsBy.mockImplementation((where: Partial<User>) =>
-        Promise.resolve(where.studentId === STUDENT_ID),
+      repository.findOneBy.mockImplementation((where: Partial<User>) =>
+        Promise.resolve(
+          where.studentId === STUDENT_ID ? { id: 'other-user' } : null,
+        ),
       );
 
       await expect(
@@ -147,6 +155,118 @@ describe('UsersService', () => {
       expect(repository.findOneBy).toHaveBeenCalledWith({
         email: 'admin@colegio.edu.co',
       });
+    });
+  });
+
+  describe('update y remove', () => {
+    function storedUser(overrides: Partial<User> = {}): User {
+      return {
+        id: 'user-1',
+        email: 'docente@colegio.edu.co',
+        passwordHash: 'hash',
+        role: Role.TEACHER,
+        studentId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides,
+      };
+    }
+
+    it('cambia el rol de un docente a administrador', async () => {
+      repository.findOneBy.mockResolvedValue(storedUser());
+
+      const user = await service.update('user-1', { role: Role.ADMIN });
+
+      expect(user.role).toBe(Role.ADMIN);
+    });
+
+    it('guarda cifrada la nueva contraseña', async () => {
+      repository.findOneBy.mockResolvedValue(storedUser());
+
+      await service.update('user-1', { password: 'NuevaClave123' });
+
+      const saved = repository.save.mock.calls[0][0] as User;
+      expect(await compare('NuevaClave123', saved.passwordHash)).toBe(true);
+    });
+
+    it('al dejar de ser STUDENT pierde el enlace con el estudiante', async () => {
+      repository.findOneBy.mockResolvedValueOnce(
+        storedUser({ role: Role.STUDENT, studentId: STUDENT_ID }),
+      );
+
+      const user = await service.update('user-1', { role: Role.TEACHER });
+
+      expect(user.studentId).toBeNull();
+    });
+
+    it('no deja quitarle el rol al único administrador', async () => {
+      repository.findOneBy.mockResolvedValue(storedUser({ role: Role.ADMIN }));
+      repository.countBy.mockResolvedValue(1);
+
+      await expect(
+        service.update('user-1', { role: Role.TEACHER }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('no deja borrar al único administrador', async () => {
+      repository.findOneBy.mockResolvedValue(storedUser({ role: Role.ADMIN }));
+      repository.countBy.mockResolvedValue(1);
+
+      await expect(
+        service.remove('user-1', 'otro-admin'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(repository.remove).not.toHaveBeenCalled();
+    });
+
+    it('no deja que un usuario se borre a sí mismo', async () => {
+      await expect(service.remove('user-1', 'user-1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('borra un docente', async () => {
+      repository.findOneBy.mockResolvedValue(storedUser());
+
+      await service.remove('user-1', 'admin-1');
+
+      expect(repository.remove).toHaveBeenCalled();
+    });
+  });
+
+  describe('changePassword', () => {
+    let stored: User;
+
+    beforeEach(async () => {
+      stored = {
+        id: 'user-1',
+        email: 'docente@colegio.edu.co',
+        passwordHash: await hash('ClaveActual1', 4),
+        role: Role.TEACHER,
+        studentId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      repository.findOneBy.mockResolvedValue(stored);
+    });
+
+    it('guarda la nueva contraseña cifrada', async () => {
+      await service.changePassword('user-1', 'ClaveActual1', 'ClaveNueva2');
+
+      const saved = repository.save.mock.calls[0][0] as User;
+      expect(await compare('ClaveNueva2', saved.passwordHash)).toBe(true);
+    });
+
+    it('rechaza una contraseña actual incorrecta', async () => {
+      await expect(
+        service.changePassword('user-1', 'Equivocada1', 'ClaveNueva2'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('rechaza repetir la misma contraseña', async () => {
+      await expect(
+        service.changePassword('user-1', 'ClaveActual1', 'ClaveActual1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

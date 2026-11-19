@@ -21,10 +21,12 @@ La API ya funciona completa en local. Estos son los pasos del plan:
 | 9 | Filtro de errores, Helmet, límite de peticiones y health check | ✅ |
 | 10 | Datos de ejemplo (`npm run seed`) | ✅ |
 | 11 | Pruebas e2e | ✅ |
-| **12** | **Dockerfile de producción, integración continua y despliegue** | ⬜ **te toca** |
-| extra | Gestión de usuarios, cambio de contraseña, paginación y reporte por grado | ⬜ te toca |
+| 12 | Dockerfile de producción e integración continua | ✅ |
+| extra | Gestión de usuarios, cambio de contraseña, paginación, búsqueda, reporte por grado y CORS | ✅ |
+| — | Publicar la API en un proveedor | ⬜ pendiente |
+| — | Refresh token | ⬜ opcional |
 
-Para terminar el proyecto hace falta el **paso 12**. Las tareas extra lo mejoran, pero la API funciona sin ellas.
+> **Segunda etapa terminada** (rama `feature/segunda-etapa`, elaborada por Joan Mosquera): las tareas 1, 2, 4, 5, 6 y 7 de la sección 4 están hechas. Solo falta la tarea 3: publicar la API en un proveedor, que necesita una cuenta del equipo. El `Dockerfile`, el health check y CORS ya están listos para eso.
 
 ---
 
@@ -109,6 +111,8 @@ Abre `http://localhost:3000/docs` e inicia sesión con `POST /auth/login`. Puede
 
 ### Tarea 1: Dockerfile de producción (paso 12, obligatoria)
 
+**Estado:** ✅ Hecha: `Dockerfile`, `.dockerignore` y el servicio `api` en `docker-compose.yml` (`docker compose --profile app up -d --build`).
+
 **Objetivo:** que la API corra en un contenedor listo para producción.
 
 **Qué hacer:**
@@ -131,6 +135,8 @@ Abre `http://localhost:3000/docs` e inicia sesión con `POST /auth/login`. Puede
 
 ### Tarea 2: Integración continua con GitHub Actions (paso 12, obligatoria)
 
+**Estado:** ✅ Hecha: [.github/workflows/ci.yml](../.github/workflows/ci.yml). Solo falta proteger `main` en **Settings → Branches**.
+
 **Objetivo:** que cada Pull Request se revise automáticamente.
 
 **Qué hacer:** crea `.github/workflows/ci.yml` que, en cada `push` y `pull_request`:
@@ -142,6 +148,8 @@ Abre `http://localhost:3000/docs` e inicia sesión con `POST /auth/login`. Puede
 **Listo cuando:** el PR muestra la marca verde. En **Settings → Branches**, protege `main` para que no se pueda unir un PR con la CI en rojo.
 
 ### Tarea 3: Despliegue (paso 12, obligatoria)
+
+**Estado:** ⬜ Pendiente: requiere crear la cuenta en el proveedor. CORS ya se configura con `CORS_ORIGIN`.
 
 **Objetivo:** dejar la API publicada en internet.
 
@@ -162,6 +170,8 @@ Abre `http://localhost:3000/docs` e inicia sesión con `POST /auth/login`. Puede
 
 ### Tarea 4: Gestión de usuarios (extra)
 
+**Estado:** ✅ Hecha: rutas `/users` (solo ADMIN).
+
 **Objetivo:** que el ADMIN pueda listar, editar y borrar usuarios. Hoy solo puede crearlos.
 
 **Qué hacer:**
@@ -174,11 +184,15 @@ Abre `http://localhost:3000/docs` e inicia sesión con `POST /auth/login`. Puede
 
 ### Tarea 5: Cambio de contraseña (extra)
 
+**Estado:** ✅ Hecha: `PATCH /auth/password`. El refresh token quedó como opcional.
+
 - Crea `PATCH /auth/password`, abierta a cualquier usuario con sesión, con `currentPassword` y `newPassword` (mínimo 8 y máximo 72 caracteres).
 - Verifica la contraseña actual con `compare` de `bcryptjs` y guarda la nueva con `hash`, como en `UsersService.create`.
 - Opcional, más avanzado: un refresh token con su propia tabla y migración.
 
 ### Tarea 6: Paginación y búsqueda (extra)
+
+**Estado:** ✅ Hecha: `page`, `limit`, `search` y `gradeLevel`.
 
 - Crea un `PaginationQueryDto` en `src/common/` con `page` (mínimo 1) y `limit` (de 1 a 100). Usa `@Type(() => Number)`, como en `FilterGradesDto`.
 - Aplícalo en `GET /students`, `GET /areas` y `GET /grades`, y responde `{ data, total, page, limit }` usando `findAndCount`.
@@ -186,6 +200,8 @@ Abre `http://localhost:3000/docs` e inicia sesión con `POST /auth/login`. Puede
 - Esto **cambia la forma de la respuesta**: actualiza las pruebas e2e que esperan un arreglo y el README.
 
 ### Tarea 7: Reporte por grado (extra)
+
+**Estado:** ✅ Hecha: `GET /recommendations/grade-levels/:gradeLevel`.
 
 - Crea `GET /recommendations/grade-levels/:gradeLevel` con `@Roles(Role.ADMIN, Role.TEACHER)`.
 - Respuesta: promedio del grado por materia, cuántos estudiantes hay en cada nivel (BAJO, BÁSICO, ALTO y SUPERIOR) y la lista de estudiantes en riesgo (promedio general menor a 3.0).

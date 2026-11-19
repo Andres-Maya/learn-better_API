@@ -10,6 +10,11 @@ import { GradesService } from '../grades/grades.service';
 import { Grade } from '../grades/entities/grade.entity';
 import { StudentsService } from '../students/students.service';
 import { AreaAnalysis } from './models/area-analysis.model';
+import {
+  GradeLevelAreaSummary,
+  GradeLevelReport,
+  LevelCounts,
+} from './models/grade-level-report.model';
 import { PerformanceLevel } from './models/performance-level.enum';
 import { StudentAnalysis } from './models/student-analysis.model';
 import { Trend } from './models/trend.enum';
@@ -87,6 +92,67 @@ export class RecommendationsService {
       );
     }
     return this.buildAreaAnalysis(area, grades);
+  }
+
+  async gradeLevelReport(gradeLevel: string): Promise<GradeLevelReport> {
+    const students = await this.studentsService.findByGradeLevel(gradeLevel);
+    if (students.length === 0) {
+      throw new NotFoundException(
+        `No hay estudiantes en el grado "${gradeLevel}"`,
+      );
+    }
+
+    // One analysis per student keeps the report consistent with the individual one.
+    const analyses = await Promise.all(
+      students.map((student) => this.analyzeStudent(student.id)),
+    );
+    const graded = analyses.filter(
+      (analysis) => analysis.overallAverage !== null,
+    );
+
+    const levels: LevelCounts = { BAJO: 0, BASICO: 0, ALTO: 0, SUPERIOR: 0 };
+    for (const analysis of graded) {
+      levels[analysis.level!] += 1;
+    }
+
+    const byArea = new Map<string, { areaName: string; averages: number[] }>();
+    for (const area of graded.flatMap((analysis) => analysis.areas)) {
+      const entry = byArea.get(area.areaId) ?? {
+        areaName: area.areaName,
+        averages: [],
+      };
+      entry.averages.push(area.average);
+      byArea.set(area.areaId, entry);
+    }
+    const areas: GradeLevelAreaSummary[] = [...byArea.entries()]
+      .map(([areaId, { areaName, averages }]) => ({
+        areaId,
+        areaName,
+        average: round(mean(averages)),
+        studentsCount: averages.length,
+      }))
+      .sort((a, b) => a.average - b.average);
+
+    return {
+      gradeLevel,
+      studentsCount: students.length,
+      studentsWithGrades: graded.length,
+      overallAverage:
+        graded.length === 0
+          ? null
+          : round(mean(graded.map((analysis) => analysis.overallAverage!))),
+      levels,
+      areas,
+      studentsAtRisk: graded
+        .filter((analysis) => analysis.overallAverage! < PASSING_SCORE)
+        .sort((a, b) => a.overallAverage! - b.overallAverage!)
+        .map((analysis) => ({
+          studentId: analysis.studentId,
+          studentName: analysis.studentName,
+          overallAverage: analysis.overallAverage!,
+          weakestArea: analysis.weakestArea!,
+        })),
+    };
   }
 
   private buildAreaAnalysis(area: Area, grades: Grade[]): AreaAnalysis {

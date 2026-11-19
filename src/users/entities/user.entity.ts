@@ -26,7 +26,8 @@ export class User {
   role: Role;
 
   // Only STUDENT users are linked to a student, so they can see their own grades.
-  @Column({ type: 'uuid', nullable: true, unique: true })
+  // The one-to-one relation already makes the column unique.
+  @Column({ type: 'uuid', nullable: true })
   studentId: string | null;
 
   @OneToOne(() => Student, { onDelete: 'SET NULL' })

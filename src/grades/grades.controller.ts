@@ -18,7 +18,8 @@ import type { AuthenticatedUser } from '../auth/jwt-payload';
 import { assertCanAccessStudent, ownStudentId } from '../auth/student-access';
 import { Role } from '../users/role.enum';
 import { CreateGradeDto } from './dto/create-grade.dto';
-import { FilterGradesDto } from './dto/filter-grades.dto';
+import { GradesQueryDto } from './dto/grades-query.dto';
+import { PaginatedGradesDto } from './dto/paginated-grades.dto';
 import { UpdateGradeDto } from './dto/update-grade.dto';
 import { GradesService } from './grades.service';
 import { Grade } from './entities/grade.entity';
@@ -36,20 +37,20 @@ export class GradesController {
     return this.gradesService.create(dto);
   }
 
-  /** Lista notas con filtros opcionales. Un estudiante solo recibe las suyas. */
+  /** Lista notas por páginas con filtros opcionales. Un estudiante solo recibe las suyas. */
   @Get()
   findAll(
-    @Query() filter: FilterGradesDto,
+    @Query() query: GradesQueryDto,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<Grade[]> {
+  ): Promise<PaginatedGradesDto> {
     const studentId = ownStudentId(user);
     if (studentId !== undefined) {
-      if (filter.studentId !== undefined) {
-        assertCanAccessStudent(user, filter.studentId);
+      if (query.studentId !== undefined) {
+        assertCanAccessStudent(user, query.studentId);
       }
-      return this.gradesService.findAll({ ...filter, studentId });
+      return this.gradesService.findPage({ ...query, studentId });
     }
-    return this.gradesService.findAll(filter);
+    return this.gradesService.findPage(query);
   }
 
   /** Muestra una nota. */

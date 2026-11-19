@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { isUniqueViolation } from '../common/is-unique-violation';
 import { StudentsService } from '../students/students.service';
@@ -84,6 +84,24 @@ export class UsersService {
     delete user.student;
 
     return toPublicUser(await this.save(user));
+  }
+
+  async changePassword(
+    id: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.getUser(id);
+    if (!(await compare(currentPassword, user.passwordHash))) {
+      throw new BadRequestException('La contraseña actual no es correcta');
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'La nueva contraseña debe ser distinta de la actual',
+      );
+    }
+    user.passwordHash = await hash(newPassword, BCRYPT_ROUNDS);
+    await this.usersRepository.save(user);
   }
 
   async remove(id: string, currentUserId: string): Promise<void> {

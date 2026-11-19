@@ -3,7 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { compare } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { StudentsService } from '../students/students.service';
 import { User } from './entities/user.entity';
@@ -230,6 +230,43 @@ describe('UsersService', () => {
       await service.remove('user-1', 'admin-1');
 
       expect(repository.remove).toHaveBeenCalled();
+    });
+  });
+
+  describe('changePassword', () => {
+    let stored: User;
+
+    beforeEach(async () => {
+      stored = {
+        id: 'user-1',
+        email: 'docente@colegio.edu.co',
+        passwordHash: await hash('ClaveActual1', 4),
+        role: Role.TEACHER,
+        studentId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      repository.findOneBy.mockResolvedValue(stored);
+    });
+
+    it('guarda la nueva contraseña cifrada', async () => {
+      await service.changePassword('user-1', 'ClaveActual1', 'ClaveNueva2');
+
+      const saved = repository.save.mock.calls[0][0] as User;
+      expect(await compare('ClaveNueva2', saved.passwordHash)).toBe(true);
+    });
+
+    it('rechaza una contraseña actual incorrecta', async () => {
+      await expect(
+        service.changePassword('user-1', 'Equivocada1', 'ClaveNueva2'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('rechaza repetir la misma contraseña', async () => {
+      await expect(
+        service.changePassword('user-1', 'ClaveActual1', 'ClaveActual1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

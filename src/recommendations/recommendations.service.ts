@@ -238,7 +238,8 @@ function trendFor(grades: Grade[]): Trend {
   const recent = mean(
     ordered.slice(ordered.length - half).map((grade) => grade.score),
   );
-  const difference = recent - older;
+  // Rounded so that 3.3 - 3 (0.2999... in floating point) counts as +0.3.
+  const difference = round(recent - older);
 
   if (difference >= TREND_THRESHOLD) return Trend.IMPROVING;
   if (difference <= -TREND_THRESHOLD) return Trend.DECLINING;

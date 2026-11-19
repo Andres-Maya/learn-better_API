@@ -53,7 +53,7 @@ Construida con **NestJS**, **TypeScript**, **PostgreSQL** y autenticación con *
 
 ## Requisitos
 
-- Node.js 20 o superior
+- Node.js 22 o superior
 - npm
 - Docker Desktop
 - Git
@@ -80,12 +80,28 @@ docker compose up -d
 # 5. Crear las tablas
 npm run migration:run
 
-# 6. Iniciar la API en modo desarrollo
+# 6. (Opcional) Cargar datos de ejemplo
+npm run seed
+
+# 7. Iniciar la API en modo desarrollo
 npm run start:dev
 ```
 
 - API: `http://localhost:3000`
 - Documentación Swagger: `http://localhost:3000/docs`
+- Estado de la API: `http://localhost:3000/health`
+
+> Si el puerto `3000` o el `5432` ya los usa otro proyecto, cambia `PORT` o `DB_PORT` en tu `.env`. El `docker-compose.yml` publica PostgreSQL en el `DB_PORT` que pongas.
+
+### Datos de ejemplo
+
+`npm run seed` carga 5 materias, 5 estudiantes con perfiles distintos (mejorando, bajando, irregular, superior y sin notas) y 60 notas. Se puede ejecutar varias veces sin duplicar nada. También crea estas cuentas:
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| ADMIN | el `ADMIN_EMAIL` de tu `.env` (lo crea la API al arrancar) | `ADMIN_PASSWORD` |
+| TEACHER | `docente@colegio.edu.co` | `Docente123` |
+| STUDENT | `laura.gomez@colegio.edu.co` | `Estudiante123` |
 
 ---
 
@@ -99,10 +115,13 @@ npm run start:dev
 | `DB_USER` | Usuario de la base de datos | `postgres` |
 | `DB_PASSWORD` | Contraseña de la base de datos | `postgres` |
 | `DB_NAME` | Nombre de la base de datos | `learn_better` |
-| `JWT_SECRET` | Clave para firmar los tokens | `una-clave-larga-y-secreta` |
+| `JWT_SECRET` | Clave para firmar los tokens (mínimo 32 caracteres) | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `JWT_EXPIRES_IN` | Duración del token | `1d` |
 | `ADMIN_EMAIL` | Correo del administrador inicial | `admin@colegio.edu.co` |
-| `ADMIN_PASSWORD` | Contraseña del administrador inicial | `CambiaEsto123` |
+| `ADMIN_PASSWORD` | Contraseña del administrador inicial (mínimo 8) | `CambiaEsto123` |
+| `OBSERVE_APP_KEY` | Opcional. Telemetría de observe.nestjs.com; sin ella el módulo no se carga | |
+| `OBSERVE_APP_SECRET` | Opcional. Va junto con `OBSERVE_APP_KEY` | |
+| `DB_TEST_NAME` | Opcional. Base de datos de las pruebas e2e | `learn_better_test` |
 
 > El archivo `.env` no se sube al repositorio. Usa `.env.example` como guía.
 
@@ -163,6 +182,22 @@ flowchart TD
 | `403` | El rol del usuario no tiene permiso. |
 | `404` | El recurso no existe. |
 | `409` | Dato duplicado (nombre de materia o correo). |
+| `429` | Demasiadas peticiones: más de 100 por minuto, o más de 5 intentos de login por minuto. |
+| `503` | `GET /health` no logra conectarse a la base de datos. |
+
+Todos los errores tienen la misma forma:
+
+```json
+{
+  "statusCode": 404,
+  "error": "Not Found",
+  "message": "Grade with id \"...\" not found",
+  "path": "/grades/...",
+  "timestamp": "2026-11-19T17:00:30.093Z"
+}
+```
+
+Además, la API envía cabeceras de seguridad con Helmet.
 
 ---
 
@@ -177,7 +212,7 @@ flowchart TD
 | Ver recomendaciones | ✅ | ✅ | Solo las suyas |
 | Crear usuarios | ✅ | ❌ | ❌ |
 
-Rutas públicas, sin token: `POST /auth/login` y `GET /`.
+Rutas públicas, sin token: `POST /auth/login`, `GET /`, `GET /health` y `GET /docs`.
 
 ---
 
@@ -229,6 +264,12 @@ Rutas públicas, sin token: `POST /auth/login` y `GET /`.
 | `GET` | `/recommendations/students/:studentId/areas/:areaId` | Análisis en una materia | Todos* |
 
 \* Un usuario `STUDENT` solo puede ver sus propias notas y recomendaciones.
+
+### Salud
+
+| Método | Ruta | Descripción | Roles |
+|---|---|---|---|
+| `GET` | `/health` | Estado de la API y de la base de datos | Público |
 
 ### Ejemplo: registrar una nota
 
@@ -366,8 +407,14 @@ src/
 ├── areas/             Materias
 ├── grades/            Notas y escala de calificación
 ├── recommendations/   Análisis y consejos
-└── main.ts            Arranque de la app y Swagger
-test/                  Pruebas e2e
+├── health/            Health check
+├── common/            Filtro global de errores y utilidades
+├── config/            Validación de variables de entorno
+├── database/          Conexión, migraciones y datos de ejemplo (seeds/)
+├── app.setup.ts       Helmet, validación y Swagger (compartido con las pruebas)
+└── main.ts            Arranque de la app
+test/                  Pruebas e2e y su configuración
+docs/                  Guías del proyecto
 ```
 
 Cada módulo sigue el mismo patrón:
@@ -388,6 +435,9 @@ Cada módulo sigue el mismo patrón:
 | `npm run build` | Compila el proyecto |
 | `npm run test` | Ejecuta las pruebas unitarias |
 | `npm run test:cov` | Pruebas con reporte de cobertura |
+| `npm run test:e2e` | Pruebas e2e contra una base de datos de pruebas |
+| `npm run lint` | Revisa el código con oxlint |
+| `npm run seed` | Carga los datos de ejemplo |
 | `npm run migration:generate` | Genera una migración a partir de los cambios en las entidades |
 | `npm run migration:run` | Aplica las migraciones pendientes |
 | `npm run migration:revert` | Revierte la última migración |
@@ -399,15 +449,19 @@ Cada módulo sigue el mismo patrón:
 ```bash
 npm run test       # pruebas unitarias
 npm run test:cov   # cobertura
+npm run test:e2e   # pruebas e2e (necesita PostgreSQL arriba)
 ```
 
-Se prueban principalmente:
+**Unitarias** (`src/**/*.spec.ts`):
 
 - Cálculo de niveles en los bordes (2.99, 3, 4 y 4.6).
 - Tendencia: mejorando, bajando, estable y con una sola nota.
 - Detección de irregularidad.
 - Registro de notas y errores 404.
-- Inicio de sesión y permisos por rol.
+- Inicio de sesión, guards y permisos por rol.
+- Filtro global de errores.
+
+**E2E** (`test/*.e2e-spec.ts`): levantan la API completa contra una base de datos aparte, `<DB_NAME>_test`. Antes de cada corrida, esa base se borra, se vuelve a crear y se le aplican las migraciones reales. Nunca tocan los datos de desarrollo. Cubren el login, los permisos de cada rol, el registro de notas con sus validaciones, lo que puede ver un estudiante y las recomendaciones.
 
 ---
 
@@ -437,22 +491,23 @@ Ejemplo: `feat: entidad Student con typeorm`
 - CRUD de estudiantes, materias y notas
 - Recomendaciones personalizadas
 - PostgreSQL con migraciones
+- Inicio de sesión con JWT y roles (ADMIN, TEACHER, STUDENT)
 - Documentación con Swagger
-- Inicio de sesión con JWT y roles
-- Pruebas unitarias principales
+- Pruebas unitarias
+- Filtro global de errores, Helmet, límite de peticiones y health check
+- Datos de ejemplo (seed)
+- Pruebas e2e
 
 ### 🚧 Próximos pasos
 
+El detalle de cada tarea está en [docs/GUIA-SEGUNDA-ETAPA.md](docs/GUIA-SEGUNDA-ETAPA.md).
+
+- [ ] Dockerfile de producción y despliegue
+- [ ] Integración continua (lint + pruebas en cada Pull Request)
+- [ ] Editar y borrar usuarios
+- [ ] Cambio de contraseña y refresh token
 - [ ] Paginación y búsqueda
 - [ ] Reporte por grado
-- [ ] Datos de ejemplo (seed)
-- [ ] Health check
-- [ ] Helmet y límite de peticiones
-- [ ] Filtro global de errores
-- [ ] Refresh token y cambio de contraseña
-- [ ] Editar y borrar usuarios
-- [ ] Pruebas e2e
-- [ ] Dockerfile de producción
 
 ---
 

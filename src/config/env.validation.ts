@@ -1,11 +1,13 @@
 import { plainToInstance } from 'class-transformer';
 import {
+  IsEmail,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 
@@ -36,6 +38,22 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   DB_NAME: string;
+
+  @IsString()
+  @MinLength(32)
+  JWT_SECRET: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  JWT_EXPIRES_IN: string = '1d';
+
+  @IsEmail()
+  ADMIN_EMAIL: string;
+
+  @IsString()
+  @MinLength(8)
+  ADMIN_PASSWORD: string;
 }
 
 export function validateEnv(

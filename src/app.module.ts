@@ -5,11 +5,13 @@ import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AreasModule } from './areas/areas.module';
+import { AuthModule } from './auth/auth.module';
 import { EnvironmentVariables, validateEnv } from './config/env.validation';
 import { buildDataSourceOptions } from './database/database.config';
 import { GradesModule } from './grades/grades.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { StudentsModule } from './students/students.module';
+import { UsersModule } from './users/users.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -38,6 +40,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AreasModule,
     GradesModule,
     RecommendationsModule,
+    UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

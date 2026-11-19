@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { compare, hash } from 'bcryptjs';
+import { hash } from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { isUniqueViolation } from '../common/is-unique-violation';
 import { StudentsService } from '../students/students.service';
@@ -50,10 +50,6 @@ export class UsersService {
   // Returns the password hash too, so it is only meant for the login flow.
   findByEmailWithPassword(email: string): Promise<User | null> {
     return this.usersRepository.findOneBy({ email: normalizeEmail(email) });
-  }
-
-  verifyPassword(user: User, password: string): Promise<boolean> {
-    return compare(password, user.passwordHash);
   }
 
   async existsWithRole(role: Role): Promise<boolean> {

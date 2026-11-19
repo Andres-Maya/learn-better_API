@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { Role } from '../users/role.enum';
 import { PublicUserDto } from '../users/dto/public-user.dto';
@@ -18,6 +19,7 @@ import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 import type { AuthenticatedUser } from './jwt-payload';
 
+@ApiTags('Autenticación')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -25,6 +27,7 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
+  /** Inicia sesión y devuelve el token de acceso. */
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -32,11 +35,15 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  /** Datos del usuario que hizo la petición. */
+  @ApiBearerAuth()
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser): Promise<PublicUserDto> {
     return this.usersService.findOne(user.id);
   }
 
+  /** Crea un usuario ADMIN, TEACHER o STUDENT. */
+  @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @Post('register')
   register(@Body() dto: CreateUserDto): Promise<PublicUserDto> {

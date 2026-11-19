@@ -11,6 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../auth/jwt-payload';
@@ -22,16 +23,20 @@ import { UpdateGradeDto } from './dto/update-grade.dto';
 import { GradesService } from './grades.service';
 import { Grade } from './entities/grade.entity';
 
+@ApiTags('Notas')
+@ApiBearerAuth()
 @Controller('grades')
 export class GradesController {
   constructor(private readonly gradesService: GradesService) {}
 
+  /** Registra una nota de 0 a 5 en un periodo de 1 a 4. */
   @Roles(Role.ADMIN, Role.TEACHER)
   @Post()
   create(@Body() dto: CreateGradeDto): Promise<Grade> {
     return this.gradesService.create(dto);
   }
 
+  /** Lista notas con filtros opcionales. Un estudiante solo recibe las suyas. */
   @Get()
   findAll(
     @Query() filter: FilterGradesDto,
@@ -47,6 +52,7 @@ export class GradesController {
     return this.gradesService.findAll(filter);
   }
 
+  /** Muestra una nota. */
   @Get(':id')
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
@@ -57,6 +63,7 @@ export class GradesController {
     return grade;
   }
 
+  /** Edita el puntaje, periodo o descripción de una nota. */
   @Roles(Role.ADMIN, Role.TEACHER)
   @Patch(':id')
   update(
@@ -66,6 +73,7 @@ export class GradesController {
     return this.gradesService.update(id, dto);
   }
 
+  /** Borra una nota. */
   @Roles(Role.ADMIN, Role.TEACHER)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)

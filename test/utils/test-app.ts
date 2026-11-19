@@ -21,8 +21,12 @@ export async function createTestApp(): Promise<INestApplication<App>> {
 // Leaves only the admin created on startup, so each test file starts clean.
 export async function resetDatabase(app: INestApplication): Promise<void> {
   const dataSource = app.get(DataSource);
+  // DELETE instead of TRUNCATE ... CASCADE, which would also empty "users"
+  // through its foreign key to "students" and remove the admin.
   await dataSource.query(`DELETE FROM "users" WHERE "role" <> 'ADMIN'`);
-  await dataSource.query('TRUNCATE "grades", "students", "areas" CASCADE');
+  await dataSource.query('DELETE FROM "grades"');
+  await dataSource.query('DELETE FROM "students"');
+  await dataSource.query('DELETE FROM "areas"');
 }
 
 export async function login(

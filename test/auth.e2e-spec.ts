@@ -121,4 +121,35 @@ describe('Autenticación (e2e)', () => {
       })
       .expect(403);
   });
+
+  it('un usuario cambia su contraseña y entra con la nueva', async () => {
+    const token = await createUserAndLogin(app, adminToken, {
+      email: 'docente.clave@colegio.edu.co',
+      role: 'TEACHER',
+    });
+    const server = app.getHttpServer();
+
+    await request(server)
+      .patch('/auth/password')
+      .auth(token, { type: 'bearer' })
+      .send({ currentPassword: 'incorrecta', newPassword: 'ClaveNueva123' })
+      .expect(400);
+    await request(server)
+      .patch('/auth/password')
+      .auth(token, { type: 'bearer' })
+      .send({ currentPassword: 'Password123', newPassword: 'ClaveNueva123' })
+      .expect(204);
+
+    await request(server)
+      .post('/auth/login')
+      .send({ email: 'docente.clave@colegio.edu.co', password: 'Password123' })
+      .expect(401);
+    await request(server)
+      .post('/auth/login')
+      .send({
+        email: 'docente.clave@colegio.edu.co',
+        password: 'ClaveNueva123',
+      })
+      .expect(200);
+  });
 });

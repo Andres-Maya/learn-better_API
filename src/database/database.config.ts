@@ -3,6 +3,7 @@ import { DataSourceOptions } from 'typeorm';
 import { Area } from '../areas/entities/area.entity';
 import { Grade } from '../grades/entities/grade.entity';
 import { Student } from '../students/entities/student.entity';
+import { User } from '../users/entities/user.entity';
 
 export interface DatabaseEnv {
   DB_HOST: string;
@@ -20,7 +21,7 @@ export function buildDataSourceOptions(env: DatabaseEnv): DataSourceOptions {
     username: env.DB_USER,
     password: env.DB_PASSWORD,
     database: env.DB_NAME,
-    entities: [Student, Area, Grade],
+    entities: [Student, Area, Grade, User],
     migrations: [join(__dirname, 'migrations', '*.js')],
     synchronize: false,
   };

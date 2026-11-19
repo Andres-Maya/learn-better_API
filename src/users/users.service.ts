@@ -11,6 +11,7 @@ import { isUniqueViolation } from '../common/is-unique-violation';
 import { StudentsService } from '../students/students.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PublicUserDto } from './dto/public-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { Role } from './role.enum';
 
@@ -26,24 +27,74 @@ export class UsersService {
 
   async create(dto: CreateUserDto): Promise<PublicUserDto> {
     const email = normalizeEmail(dto.email);
-    await this.assertStudentLink(dto.role, dto.studentId);
+    const studentId = dto.studentId ?? null;
+    await this.assertStudentLink(dto.role, studentId);
     await this.assertEmailIsAvailable(email);
 
     const user = this.usersRepository.create({
       email,
       passwordHash: await hash(dto.password, BCRYPT_ROUNDS),
       role: dto.role,
-      studentId: dto.studentId ?? null,
+      studentId,
     });
     return toPublicUser(await this.save(user));
   }
 
+  async findAll(): Promise<PublicUserDto[]> {
+    const users = await this.usersRepository.find({
+      order: { createdAt: 'ASC' },
+    });
+    return users.map(toPublicUser);
+  }
+
   async findOne(id: string): Promise<PublicUserDto> {
-    const user = await this.usersRepository.findOneBy({ id });
-    if (!user) {
-      throw new NotFoundException(`User with id "${id}" not found`);
+    return toPublicUser(await this.getUser(id));
+  }
+
+  async update(id: string, dto: UpdateUserDto): Promise<PublicUserDto> {
+    const user = await this.getUser(id);
+    const role = dto.role ?? user.role;
+    // Changing a STUDENT to another role drops the link to the student.
+    const studentId =
+      dto.studentId !== undefined
+        ? dto.studentId
+        : role === Role.STUDENT
+          ? user.studentId
+          : null;
+
+    if (user.role === Role.ADMIN && role !== Role.ADMIN) {
+      await this.assertIsNotLastAdmin();
     }
-    return toPublicUser(user);
+    if (role !== user.role || studentId !== user.studentId) {
+      await this.assertStudentLink(role, studentId, user.id);
+    }
+    if (dto.email !== undefined) {
+      const email = normalizeEmail(dto.email);
+      if (email !== user.email) {
+        await this.assertEmailIsAvailable(email);
+      }
+      user.email = email;
+    }
+    if (dto.password !== undefined) {
+      user.passwordHash = await hash(dto.password, BCRYPT_ROUNDS);
+    }
+    user.role = role;
+    user.studentId = studentId;
+    // Drop the loaded relation so TypeORM saves the new studentId column.
+    delete user.student;
+
+    return toPublicUser(await this.save(user));
+  }
+
+  async remove(id: string, currentUserId: string): Promise<void> {
+    if (id === currentUserId) {
+      throw new BadRequestException('No puedes borrar tu propio usuario');
+    }
+    const user = await this.getUser(id);
+    if (user.role === Role.ADMIN) {
+      await this.assertIsNotLastAdmin();
+    }
+    await this.usersRepository.remove(user);
   }
 
   findById(id: string): Promise<User | null> {
@@ -59,12 +110,30 @@ export class UsersService {
     return this.usersRepository.existsBy({ role });
   }
 
+  private async getUser(id: string): Promise<User> {
+    const user = await this.usersRepository.findOneBy({ id });
+    if (!user) {
+      throw new NotFoundException(`User with id "${id}" not found`);
+    }
+    return user;
+  }
+
+  // Without an admin nobody could manage users anymore.
+  private async assertIsNotLastAdmin(): Promise<void> {
+    if ((await this.usersRepository.countBy({ role: Role.ADMIN })) <= 1) {
+      throw new ConflictException(
+        'No se puede quitar o borrar al único administrador',
+      );
+    }
+  }
+
   private async assertStudentLink(
     role: Role,
-    studentId: string | undefined,
+    studentId: string | null,
+    ignoreUserId?: string,
   ): Promise<void> {
     if (role !== Role.STUDENT) {
-      if (studentId !== undefined) {
+      if (studentId !== null) {
         throw new BadRequestException(
           'Solo los usuarios con rol STUDENT se pueden enlazar a un estudiante',
         );
@@ -72,13 +141,14 @@ export class UsersService {
       return;
     }
 
-    if (studentId === undefined) {
+    if (studentId === null) {
       throw new BadRequestException(
         'Un usuario con rol STUDENT necesita el studentId del estudiante',
       );
     }
     await this.studentsService.findOne(studentId);
-    if (await this.usersRepository.existsBy({ studentId })) {
+    const linked = await this.usersRepository.findOneBy({ studentId });
+    if (linked && linked.id !== ignoreUserId) {
       throw new ConflictException(
         `El estudiante "${studentId}" ya tiene un usuario`,
       );

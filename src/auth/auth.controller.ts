@@ -7,6 +7,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { Role } from '../users/role.enum';
 import { PublicUserDto } from '../users/dto/public-user.dto';
@@ -28,6 +29,8 @@ export class AuthController {
   ) {}
 
   /** Inicia sesión y devuelve el token de acceso. */
+  // Stricter than the global limit to slow down password guessing.
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)

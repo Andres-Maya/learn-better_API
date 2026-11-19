@@ -31,6 +31,13 @@ export class StudentsService {
     return this.studentsRepository.find({ order: { createdAt: 'ASC' } });
   }
 
+  findByGradeLevel(gradeLevel: string): Promise<Student[]> {
+    return this.studentsRepository.find({
+      where: { gradeLevel },
+      order: { lastName: 'ASC', firstName: 'ASC' },
+    });
+  }
+
   async findPage(filter: FilterStudentsDto): Promise<Page<Student>> {
     const base: FindOptionsWhere<Student> = {};
     if (filter.gradeLevel !== undefined) base.gradeLevel = filter.gradeLevel;

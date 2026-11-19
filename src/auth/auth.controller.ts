@@ -8,11 +8,13 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { Role } from '../users/role.enum';
-import { PublicUser, UsersService } from '../users/users.service';
-import { AuthService, LoginResponse } from './auth.service';
+import { PublicUserDto } from '../users/dto/public-user.dto';
+import { UsersService } from '../users/users.service';
+import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { Roles } from './decorators/roles.decorator';
+import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 import type { AuthenticatedUser } from './jwt-payload';
 
@@ -26,18 +28,18 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto): Promise<LoginResponse> {
+  login(@Body() dto: LoginDto): Promise<LoginResponseDto> {
     return this.authService.login(dto);
   }
 
   @Get('me')
-  me(@CurrentUser() user: AuthenticatedUser): Promise<PublicUser> {
+  me(@CurrentUser() user: AuthenticatedUser): Promise<PublicUserDto> {
     return this.usersService.findOne(user.id);
   }
 
   @Roles(Role.ADMIN)
   @Post('register')
-  register(@Body() dto: CreateUserDto): Promise<PublicUser> {
+  register(@Body() dto: CreateUserDto): Promise<PublicUserDto> {
     return this.usersService.create(dto);
   }
 }

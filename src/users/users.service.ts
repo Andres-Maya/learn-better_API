@@ -10,12 +10,11 @@ import { Repository } from 'typeorm';
 import { isUniqueViolation } from '../common/is-unique-violation';
 import { StudentsService } from '../students/students.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { PublicUserDto } from './dto/public-user.dto';
 import { User } from './entities/user.entity';
 import { Role } from './role.enum';
 
 const BCRYPT_ROUNDS = 10;
-
-export type PublicUser = Omit<User, 'passwordHash' | 'student'>;
 
 @Injectable()
 export class UsersService {
@@ -25,7 +24,7 @@ export class UsersService {
     private readonly studentsService: StudentsService,
   ) {}
 
-  async create(dto: CreateUserDto): Promise<PublicUser> {
+  async create(dto: CreateUserDto): Promise<PublicUserDto> {
     const email = normalizeEmail(dto.email);
     await this.assertStudentLink(dto.role, dto.studentId);
     await this.assertEmailIsAvailable(email);
@@ -39,7 +38,7 @@ export class UsersService {
     return toPublicUser(await this.save(user));
   }
 
-  async findOne(id: string): Promise<PublicUser> {
+  async findOne(id: string): Promise<PublicUserDto> {
     const user = await this.usersRepository.findOneBy({ id });
     if (!user) {
       throw new NotFoundException(`User with id "${id}" not found`);
@@ -111,7 +110,7 @@ export class UsersService {
   }
 }
 
-export function toPublicUser(user: User): PublicUser {
+export function toPublicUser(user: User): PublicUserDto {
   const {
     passwordHash: _passwordHash,
     student: _student,

@@ -1,14 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
-import { PublicUser, toPublicUser, UsersService } from '../users/users.service';
+import { toPublicUser, UsersService } from '../users/users.service';
+import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './jwt-payload';
-
-export interface LoginResponse {
-  accessToken: string;
-  user: PublicUser;
-}
 
 @Injectable()
 export class AuthService {
@@ -20,7 +16,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(dto: LoginDto): Promise<LoginResponse> {
+  async login(dto: LoginDto): Promise<LoginResponseDto> {
     const user = await this.usersService.findByEmailWithPassword(dto.email);
     const passwordMatches = await compare(
       dto.password,

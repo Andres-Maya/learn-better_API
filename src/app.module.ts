@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConditionalModule, ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -40,13 +40,19 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       errorMessage:
         'Demasiadas peticiones: espera un minuto e inténtalo de nuevo',
     }),
-    // Distributed tracing, auto-correlated logs, request/job metrics, error
-    // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
-    ObserveModule.forRoot({
-      appKey: 'YOUR_APP_KEY',
-      appSecret: 'YOUR_APP_SECRET',
-      serviceId: 'learn-better_api',
-    }),
+    // Telemetry from observe.nestjs.com. Only loaded when both keys are set in .env,
+    // so development and tests do not start its background worker.
+    ConditionalModule.registerWhen(
+      ObserveModule.forRootAsync({
+        inject: [ConfigService],
+        useFactory: (config: ConfigService<EnvironmentVariables, true>) => ({
+          appKey: config.get('OBSERVE_APP_KEY', { infer: true })!,
+          appSecret: config.get('OBSERVE_APP_SECRET', { infer: true })!,
+          serviceId: 'learn-better_api',
+        }),
+      }),
+      (env) => Boolean(env.OBSERVE_APP_KEY && env.OBSERVE_APP_SECRET),
+    ),
     StudentsModule,
     AreasModule,
     GradesModule,

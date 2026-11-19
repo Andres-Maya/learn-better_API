@@ -54,6 +54,14 @@ export class EnvironmentVariables {
   @IsString()
   @MinLength(8)
   ADMIN_PASSWORD: string;
+
+  @IsOptional()
+  @IsString()
+  OBSERVE_APP_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  OBSERVE_APP_SECRET?: string;
 }
 
 export function validateEnv(

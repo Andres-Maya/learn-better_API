@@ -11,7 +11,10 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
+import type { AuthenticatedUser } from '../auth/jwt-payload';
+import { assertCanAccessStudent, ownStudentId } from '../auth/student-access';
 import { Role } from '../users/role.enum';
 import { CreateGradeDto } from './dto/create-grade.dto';
 import { FilterGradesDto } from './dto/filter-grades.dto';
@@ -30,13 +33,28 @@ export class GradesController {
   }
 
   @Get()
-  findAll(@Query() filter: FilterGradesDto): Promise<Grade[]> {
+  findAll(
+    @Query() filter: FilterGradesDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<Grade[]> {
+    const studentId = ownStudentId(user);
+    if (studentId !== undefined) {
+      if (filter.studentId !== undefined) {
+        assertCanAccessStudent(user, filter.studentId);
+      }
+      return this.gradesService.findAll({ ...filter, studentId });
+    }
     return this.gradesService.findAll(filter);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Grade> {
-    return this.gradesService.findOne(id);
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<Grade> {
+    const grade = await this.gradesService.findOne(id);
+    assertCanAccessStudent(user, grade.studentId);
+    return grade;
   }
 
   @Roles(Role.ADMIN, Role.TEACHER)

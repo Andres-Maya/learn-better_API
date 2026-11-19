@@ -12,6 +12,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { EnvironmentVariables, validateEnv } from './config/env.validation';
 import { buildDataSourceOptions } from './database/database.config';
 import { GradesModule } from './grades/grades.module';
+import { HealthModule } from './health/health.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { StudentsModule } from './students/students.module';
 import { UsersModule } from './users/users.module';
@@ -52,6 +53,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     RecommendationsModule,
     UsersModule,
     AuthModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
